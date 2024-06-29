@@ -7,7 +7,9 @@ from textual.strip import Strip
 
 from textual.events import Blur, Focus, Mount
 from textual.binding import Binding, BindingType
-from textual.reactive import reactive
+from textual.message import Message
+from textual.reactive import reactive, var
+from textual import on
 
 import numpy as np
 #from rich.text import Text
@@ -15,16 +17,19 @@ from rich.segment import Segment
 from rich.style import Style
 from rich.color import Color
 
+from typing import ClassVar
 import random
 
 class Image(Widget, can_focus=True):
   """Display Image with Pixels"""
 
-  BINDINGS: list[BindingType] = [
+  BINDINGS: ClassVar[list[BindingType]] = [
     Binding("left","cursor_left","cursor left",show=False),
     Binding("right","cursor_right","cursor right",show=False),
     Binding("up","cursor_up","cursor up",show=False),
     Binding("down","cursor_down","cursor down",show=False),
+    Binding("q","cursor_set_color","set color",show=True),
+    Binding("w","cursor_get_color","get color",show=True),
   ]
 
   DEFAULT_CSS = """
@@ -40,6 +45,24 @@ class Image(Widget, can_focus=True):
   """
 
   _cursor_inverse = reactive(False)
+  _m="▄" # \u2580"
+  color: tuple = (0,0,0)
+  cursor_blink_duration = 0.2
+  cursor_offset_x:int = 2
+  cursor_offset_y:int = 1
+
+  class GetColor(Message):
+    """
+    Message send when color is selected
+    """
+
+    def __init__(self, color: tuple) -> None:
+      self.color = color
+      super().__init__()
+
+    # @property
+    # def control(self) -> Image:
+      # return self.image
   
   def __init__(self, 
     dx: int, 
@@ -58,11 +81,6 @@ class Image(Widget, can_focus=True):
     self.dx = dy
     self.dy = dy
     self.dy2 = dy//2
-    self.m="▄" # \u2580"
-    self.cursor_offset_x = 2
-    self.cursor_offset_y = 1
-    self.cursor_blink_duration = 0.2
-    self._cursor_inverse = False
     self._init_image()
   
   #def on_mount(self) -> None:
@@ -95,6 +113,7 @@ class Image(Widget, can_focus=True):
   
   def _toggle_cursor(self):
     self._cursor_inverse = not self._cursor_inverse
+    #call for refreas
     
   def _init_image(self):
     self.image = np.zeros((self.dy,self.dx,3))
@@ -128,13 +147,26 @@ class Image(Widget, can_focus=True):
     if self.cursor_offset_y < 0:
       self.cursor_offset_y = 0
 
+  def action_cursor_get_color(self) -> None:
+    r = self.image[self.cursor_offset_y,self.cursor_offset_x,0]
+    g = self.image[self.cursor_offset_y,self.cursor_offset_x,1]
+    b = self.image[self.cursor_offset_y,self.cursor_offset_x,2]
+    self.color = (r,g,b)
+    self.post_message(Image.GetColor(self.color))
+
+  def action_cursor_set_color(self) -> None:
+    (r,g,b) = self.color
+    self.image[self.cursor_offset_y,self.cursor_offset_x,0] = r 
+    self.image[self.cursor_offset_y,self.cursor_offset_x,1] = g
+    self.image[self.cursor_offset_y,self.cursor_offset_x,2] = b
+  
   def render_line(self, y: int) -> Strip:
     if y >= self.dy2:
       return Strip.blank(self.size.width)
     # if self.has_focus:
       # return Strip.blank(self.size.width)
     segments = [
-      Segment(f"{self.m}",
+      Segment(f"{self._m}",
         Style(
           color=Color.from_rgb(
             self.image[y*2+1,x,0],
@@ -162,7 +194,7 @@ class Image(Widget, can_focus=True):
         # r = 0 if self.image[y*2+1,x,0] > 128 else 255
         # g = 0 if self.image[y*2+1,x,1] > 128 else 255
         # b = 0 if self.image[y*2+1,x,2] > 128 else 255
-        (r,g,b) = (0,0,0) if self.image[y*2+1,x,0]**2 + self.image[y*2+1,x,0]**2 + self.image[y*2+1,x,0]**2 > 3*128**2 else (255,255,255)
+        (r,g,b) = (0,0,0) if self.image[y*2+1,x,0]**2 + self.image[y*2+1,x,1]**2 + self.image[y*2+1,x,2]**2 > 3*128**2 else (255,255,255)
         fgcolor = Color.from_rgb(
           r,g,b
         )  
@@ -175,12 +207,12 @@ class Image(Widget, can_focus=True):
         # r = 0 if self.image[y*2,x,0] > 128 else 255
         # g = 0 if self.image[y*2,x,1] > 128 else 255
         # b = 0 if self.image[y*2,x,2] > 128 else 255
-        (r,g,b) = (0,0,0) if self.image[y*2,x,0]**2 + self.image[y*2,x,0]**2 + self.image[y*2,x,0]**2 > 3*128**2 else (255,255,255)
+        (r,g,b) = (0,0,0) if self.image[y*2,x,0]**2 + self.image[y*2,x,1]**2 + self.image[y*2,x,2]**2 > 3*128**2 else (255,255,255)
         bgcolor = Color.from_rgb(
           r,g,b
         )  
       segments[x] = Segment(
-        f"{self.m}",
+        f"{self._m}",
         # f"+",
         Style(
           color=fgcolor,
@@ -223,7 +255,9 @@ class Palette(Image):
     self.image[1,5,:] = (148,176,194) # 94b0c2m
     self.image[1,6,:] = (86,108,134) # 566c86m
     self.image[1,7,:] = (51,60,87) # 333c57m
-    
+
+  def action_cursor_set_color(self) -> None:
+    return None  
 
 class TermPixelArtApp(App):
   """A Textual app for ddrawing pixel art in terminal"""
@@ -243,14 +277,23 @@ class TermPixelArtApp(App):
   
   def compose(self) -> ComposeResult:
     """Create child widggets"""
+    self.image = Image(20,20)
     yield Header()
     yield Footer()
+    #ScrolableContainer
     yield Container(
       Palette(),
-      Image(10,10),
+      self.image,
       id = "main-a"
     )
     # yield Image()
+
+  @on(Image.GetColor)
+  def on_select_color(self, event: Image.GetColor) -> None:
+    self.image.color = event.color
+
+  def on_palette_get_color(self, message: Image.GetColor) -> None:
+    self.image.color = message.color
     
 
 def main():
