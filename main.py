@@ -1,6 +1,6 @@
 from textual.app import App, ComposeResult, RenderResult
 from textual.widgets import Header, Footer
-from textual.containers import Container
+from textual.containers import Container, Horizontal
 from textual.widget import Widget
 from textual.geometry import Size
 from textual.strip import Strip
@@ -20,6 +20,70 @@ from rich.color import Color
 from typing import ClassVar
 import random
 
+class DisplayColor(Widget, can_focus=False):
+  """Display Active Color"""
+
+  DEFAULT_CSS = """
+  DisplayColor {
+    width: auto;
+    height: auto;
+    /*border: heavy white;*/
+    border: none;
+    margin: 1;
+  }
+  """
+
+  _m="▄" # \u2580"
+  color: tuple = reactive((0,0,0))
+  
+  def __init__(self, 
+    dx: int, 
+    dy: int,
+    *,
+    name: str | None = None,
+    id: str | None = None,
+    classes: str | None = None,
+    disabled: bool = False
+    ):
+    """
+    Creates Image Widget
+    """
+    super().__init__(name = name, id = id, classes = classes, disabled = disabled)
+
+    self.dx = dy
+    self.dy = dy
+    self.dy2 = dy//2
+
+  def get_content_width(self, container: Size, viewport: Size) -> int:
+    return self.dx
+
+  def get_content_height(self, container: Size, viewport: Size, width: int) -> int:
+    return self.dy2
+  # def watch_color(self, color: tuple) -> None:
+    # self.styles.background = Color.from_rgb(*color)
+    
+  def render_line(self, y: int) -> Strip:
+    if y >= self.dy2:
+      return Strip.blank(self.size.width)
+    # if self.has_focus:
+      # return Strip.blank(self.size.width)
+    color = Color.from_rgb(
+      self.color[0],
+      self.color[1],
+      self.color[2]
+      )
+    segments = [
+      # Segment(f"{self._m}",
+      Segment(" ",
+        Style(
+          color=color,
+          bgcolor=color
+        )
+      )
+      for x in range(self.dx)
+    ]
+    return Strip(segments,self.dx)
+    
 class Image(Widget, can_focus=True):
   """Display Image with Pixels"""
 
@@ -222,6 +286,19 @@ class Image(Widget, can_focus=True):
     return Strip(segments,self.dx)
 
 class Palette(Image):
+  DEFAULT_CSS = """
+    Palette {
+      margin: 1;
+      border: none;
+    }
+    Palette:focus {
+      /*margin: 0;*/
+      border: none;
+      /*background: red;*/
+      /*offset: -1 -1;*/
+    }
+  """
+  
   def __init__(self, 
     *,
     name: str | None = None,
@@ -267,6 +344,14 @@ class TermPixelArtApp(App):
     /*border: heavy;
     padding: 2 4;*/
   }
+  Horizontal {
+    keyline: heavy white;
+    width: auto;
+    height: auto;
+  }
+  Horizontal:focus-within {
+    keyline: heavy red;
+  }
   /*
   Header {
     height: 3;
@@ -278,11 +363,17 @@ class TermPixelArtApp(App):
   def compose(self) -> ComposeResult:
     """Create child widggets"""
     self.image = Image(20,20)
+    self.display_color = DisplayColor(2,2)
+    # self.display_color = Static()
     yield Header()
     yield Footer()
     #ScrolableContainer
     yield Container(
-      Palette(),
+      Horizontal(
+        self.display_color,
+        Palette()
+      )
+      ,
       self.image,
       id = "main-a"
     )
@@ -291,10 +382,11 @@ class TermPixelArtApp(App):
   @on(Image.GetColor)
   def on_select_color(self, event: Image.GetColor) -> None:
     self.image.color = event.color
-
-  def on_palette_get_color(self, message: Image.GetColor) -> None:
-    self.image.color = message.color
+    self.display_color.color = event.color
     
+  # def on_palette_get_color(self, message: Image.GetColor) -> None:
+    # self.image.color = message.color
+    # self.display_color.color = message.color
 
 def main():
   print("TermPixelArt")
