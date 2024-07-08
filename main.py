@@ -12,10 +12,13 @@ from textual.reactive import reactive, var
 from textual import on
 
 import numpy as np
+import imageio
 #from rich.text import Text
 from rich.segment import Segment
 from rich.style import Style
 from rich.color import Color
+
+import argparse
 
 from typing import ClassVar
 import random
@@ -94,6 +97,8 @@ class Image(Widget, can_focus=True):
     Binding("down","cursor_down","cursor down",show=False),
     Binding("q","cursor_set_color","set color",show=True),
     Binding("w","cursor_get_color","get color",show=True),
+    Binding("ctrl+s","save_image","save image"),
+    Binding("ctrl+o","load_image","load image")
   ]
 
   DEFAULT_CSS = """
@@ -142,7 +147,7 @@ class Image(Widget, can_focus=True):
     """
     super().__init__(name = name, id = id, classes = classes, disabled = disabled)
 
-    self.dx = dy
+    self.dx = dx
     self.dy = dy
     self.dy2 = dy//2
     self._init_image()
@@ -180,7 +185,7 @@ class Image(Widget, can_focus=True):
     #call for refreas
     
   def _init_image(self):
-    self.image = np.zeros((self.dy,self.dx,3))
+    self.image = np.zeros((self.dy,self.dx,3),np.uint8)
     for y in range(self.dy):
       for x in range(self.dx):
         self.image[y,x,:] = (random.randint(0,256), random.randint(0,256), random.randint(0,256))
@@ -223,6 +228,12 @@ class Image(Widget, can_focus=True):
     self.image[self.cursor_offset_y,self.cursor_offset_x,0] = r 
     self.image[self.cursor_offset_y,self.cursor_offset_x,1] = g
     self.image[self.cursor_offset_y,self.cursor_offset_x,2] = b
+
+  def action_save_image(self) -> None:
+    imageio.imwrite("out.png",self.image)
+
+  def action_load_image(self) -> None:
+    self.image = imageio.imread("out.png")
   
   def render_line(self, y: int) -> Strip:
     if y >= self.dy2:
@@ -359,10 +370,18 @@ class TermPixelArtApp(App):
   """
 
   TITLE = "TermPixelArt"
+  image_size = (20,20)
+
+  def __init__(self, image_size: tuple[int] | None = None):
+    if image_size:
+      # print(image_size)
+      self.image_size = image_size
+    super().__init__()
+    
   
   def compose(self) -> ComposeResult:
     """Create child widggets"""
-    self.image = Image(20,20)
+    self.image = Image(*self.image_size)
     self.display_color = DisplayColor(2,2)
     # self.display_color = Static()
     yield Header()
@@ -390,7 +409,15 @@ class TermPixelArtApp(App):
 
 def main():
   print("TermPixelArt")
-  app = TermPixelArtApp()
+  parser = argparse.ArgumentParser(
+    prog = "TermPixelArt",
+    description = "Draw pixel art directly in terminal"
+  )
+  parser.add_argument("--size",nargs=2,type=int,help="Size of created image. By default 20 by 20 pixels", metavar =("dx","dy"))
+  args = parser.parse_args()
+  image_size = args.size
+  # print(image_size)
+  app = TermPixelArtApp(image_size)
   app.run()
 
 if __name__ == "__main__":
