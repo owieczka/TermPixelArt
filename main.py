@@ -119,6 +119,8 @@ class Image(Widget, can_focus=True):
   cursor_blink_duration = 0.2
   cursor_offset_x:int = 2
   cursor_offset_y:int = 1
+  dx:int = 20
+  dy:int = 20
 
   class GetColor(Message):
     """
@@ -234,6 +236,11 @@ class Image(Widget, can_focus=True):
 
   def action_load_image(self) -> None:
     self.image = imageio.imread("out.png")
+    self.dx = self.image.shape[1]
+    self.dy = self.image.shape[0]
+    self.dy2 = self.dy // 2
+    self.styles.width = self.dx
+    self.styles.height = self. dy2
   
   def render_line(self, y: int) -> Strip:
     if y >= self.dy2:
@@ -347,6 +354,12 @@ class Palette(Image):
   def action_cursor_set_color(self) -> None:
     return None  
 
+  def action_save_image(self) -> None:
+    return None
+
+  def action_load_image(self) -> None:
+    return None
+
 class TermPixelArtApp(App):
   """A Textual app for ddrawing pixel art in terminal"""
   CSS = """
@@ -413,7 +426,19 @@ def main():
     prog = "TermPixelArt",
     description = "Draw pixel art directly in terminal"
   )
-  parser.add_argument("--size",nargs=2,type=int,help="Size of created image. By default 20 by 20 pixels", metavar =("dx","dy"))
+  parser.add_argument(
+    "--size",
+    nargs=2,
+    type=int,
+    help="Size of created image. By default 20 by 20 pixels", 
+    metavar =("dx","dy")
+  )
+  parser.add_argument(
+    "-o",
+    type=str,
+    help="File name to open.",
+    metavar = "filename"
+  )
   args = parser.parse_args()
   image_size = args.size
   # print(image_size)
