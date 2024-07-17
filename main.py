@@ -235,12 +235,15 @@ class Image(Widget, can_focus=True):
     imageio.imwrite("out.png",self.image)
 
   def action_load_image(self) -> None:
-    self.image = imageio.imread("out.png")
+    load_image("out.png")
+
+  def load_image(self, filename: str) -> None:
+    self.image = imageio.imread(filename)
     self.dx = self.image.shape[1]
     self.dy = self.image.shape[0]
     self.dy2 = self.dy // 2
     self.styles.width = self.dx
-    self.styles.height = self. dy2
+    self.styles.height = self.dy2
   
   def render_line(self, y: int) -> Strip:
     if y >= self.dy2:
@@ -389,14 +392,17 @@ class TermPixelArtApp(App):
     if image_size:
       # print(image_size)
       self.image_size = image_size
+
+    self.image = Image(*self.image_size)
+    self.display_color = DisplayColor(2,2)
+        
     super().__init__()
     
+  def open_file(self, filename: str) -> None:
+    self.image.load_image(filename)
   
   def compose(self) -> ComposeResult:
     """Create child widggets"""
-    self.image = Image(*self.image_size)
-    self.display_color = DisplayColor(2,2)
-    # self.display_color = Static()
     yield Header()
     yield Footer()
     #ScrolableContainer
@@ -441,8 +447,14 @@ def main():
   )
   args = parser.parse_args()
   image_size = args.size
+  filename_open = args.o
+  # print(args)
   # print(image_size)
   app = TermPixelArtApp(image_size)
+  if filename_open:
+    if image_size:
+      print(f"Provided size will not affect canvas size")
+    app.open_file(filename_open)
   app.run()
 
 if __name__ == "__main__":
