@@ -12,7 +12,8 @@ from textual.reactive import reactive, var
 from textual import on
 
 import numpy as np
-import imageio
+# import imageio
+import imageio.v2 as imageio
 #from rich.text import Text
 from rich.segment import Segment
 from rich.style import Style
