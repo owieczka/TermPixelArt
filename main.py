@@ -190,7 +190,8 @@ class Image(Widget, can_focus=True):
     self.image = np.zeros((self.dy,self.dx,3),np.uint8)
     for y in range(self.dy):
       for x in range(self.dx):
-        self.image[y,x,:] = (random.randint(0,256), random.randint(0,256), random.randint(0,256))
+        # self.image[y,x,:] = (random.randint(0,256), random.randint(0,256), random.randint(0,256))
+        self.image[y,x,:] = self.color
 
   def get_content_width(self, container: Size, viewport: Size) -> int:
     return self.dx
@@ -235,7 +236,7 @@ class Image(Widget, can_focus=True):
     imageio.imwrite("out.png",self.image)
 
   def action_load_image(self) -> None:
-    load_image("out.png")
+    self.load_image("out.png")
 
   def load_image(self, filename: str) -> None:
     self.image = imageio.imread(filename)
